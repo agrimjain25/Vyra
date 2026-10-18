@@ -3,8 +3,7 @@
 **One brief. A different, interactive, brand-safe experience for every audience.**
 Built for the AMD Developer Hackathon: ACT III, Track 4 (A New Kind of Experience), with the Evolus, Google Gemma and Vibe Generation partner prizes.
 
-**Live demo:** _add your Render URL here_  |  **Demo video and slides:** see the hackathon submission page
-
+**Live demo:** https://vyra-203s.onrender.com  |  **Demo video and slides:** see the hackathon submission page
 ## What it does
 
 Write one campaign brief and a few audiences. VYRA:
