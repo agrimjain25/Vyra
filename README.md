@@ -1,83 +1,108 @@
-# VYRA — adaptive brand experiences
+# VYRA: adaptive brand experiences
 
-Write one campaign brief and a few audiences. VYRA asks a language model to write a **different** message, interactive branching story and image direction for each audience, generates the images, checks the result against your brand rules, and lets a human edit and approve it.
+**One brief. A different, interactive, brand-safe experience for every audience.**
+Built for the AMD Developer Hackathon: ACT III, Track 4 (A New Kind of Experience), with the Evolus, Google Gemma and Vibe Generation partner prizes.
 
-Every number on screen comes from real stored data. If an AI service is missing or fails, you see the exact reason. VYRA never fills the gap with sample text.
+**Live demo:** _add your Render URL here_  |  **Demo video and slides:** see the hackathon submission page
 
-> **Read this first — what has and has not been proven.** The code was tested against *local fake* AI servers that speak the real wire formats (68 automated backend tests + a browser run). It has **not** been run against the real AMD, Google or Evolus services, because no keys were available while it was built. The first thing to do after setup is the **Test connection** buttons in *Settings*. See `docs/TEST_REPORT.md` and `docs/LIMITATIONS.md`.
+## What it does
 
-## Quick start (Windows, PowerShell, no npm needed)
+Write one campaign brief and a few audiences. VYRA:
 
-You need **Python 3.11 or newer** (https://www.python.org/downloads/ — tick "Add python.exe to PATH").
+1. builds one shared creative strategy and visual identity, so every audience stays on-brand;
+2. writes a **different** headline, message, CTA and **branching interactive story** for each audience;
+3. generates hero and scene images;
+4. **audits its own output**: fixed rules plus an Evolus agent with a brand knowledge library, and a tone check with the Evolus Sentiment AI Tool;
+5. translates with Google Gemma, with a guard that flags changed numbers;
+6. lets a human edit, regenerate, play the story and approve. "Ready" is advisory: nothing is published automatically.
+
+Every number on screen comes from real stored data. If an AI service fails you see the exact reason; VYRA never fills the gap with sample text.
+
+## How it uses each technology
+
+| Partner | What it does in VYRA |
+|---|---|
+| **AMD** (required) | An open model served on AMD infrastructure (DeepSeek-V4-Flash via the AMD Token Factory endpoint) writes the strategy and every audience experience, and backs up the review. Settings shows an "AMD proof for judges" card; run `python scripts/amd_proof_pack.py` for `evidence/amd_proof.md`. |
+| **Evolus** | Three building blocks, driven by the Evolus REST and chat APIs: a **brand-review agent** (runs on the AMD-served open model), a **knowledge library** (RAG over `evolus/knowledge_library/`), and the **Sentiment AI Tool**. Setup: `evolus/README.md`. |
+| **Google Gemma** | Gemma-4-31B-IT is the main multilingual translator and the fallback for text and brand review. |
+| **Cloudflare Workers AI** | FLUX.1-schnell generates images (Pollinations is the automatic backup for a failed image). |
+
+## Quick start (Windows PowerShell)
+
+You need Python 3.11 or newer.
 
 ```powershell
-cd path\to\vyra
+cd path\to\Vyra
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-```
-If PowerShell refuses to run the activate script, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once and try again.
-
-```powershell
 pip install -r backend\requirements.txt
 copy backend\.env.example backend\.env
 notepad backend\.env
-```
-Fill in the values (see "Keys" below), save, then:
-```powershell
 python backend\run.py
 ```
-Open **http://127.0.0.1:8000**. The same server hosts the app, the API (`/api/docs` is interactive documentation) and the generated images.
+
+Open http://127.0.0.1:8000. The same server hosts the app, the API (`/api/docs`) and the generated images.
+If PowerShell blocks the activate script, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once.
 
 **Try it without any keys** (fake local AI, canned text, clearly labelled "local test endpoint"):
 ```powershell
-pip install -r backend\requirements.txt
 python scripts\mock_demo.py
 ```
 
-### Keys (never paste them into chat, email or git)
-All keys live only in `backend\.env`, which stays on your machine and is excluded from the ZIP.
+### Docker
+```
+docker compose up --build
+```
+Create `backend/.env` first. The container serves the app on port 8000 and keeps data in the `/data` volume. For a host such as Render, skip `.env` and set the variables below in the host's environment settings.
 
-| Goal | Fill in |
+## Configuration (environment variables)
+
+Never commit keys. They live in `backend/.env` (ignored by git) or in your host's environment settings.
+
+| Goal | Variables |
 |---|---|
-| Text with the AMD-hosted model (**required for the AMD track**) | `AMD_BASE_URL`, `AMD_API_KEY`, `AMD_MODEL` — copy these from your AMD Token Factory / AMD Developer Cloud page |
-| Images (Cloudflare Workers AI, main) | `CF_ACCOUNT_ID`, `CF_API_TOKEN` |
-| Image backup (Pollinations, used automatically only if Cloudflare fails) | `POLLINATIONS_API_KEY` |
-| Gemma (Google open model): main translator, plus fallback for review and text (text only, never images) | `GEMMA_API_KEY` (an AI Studio key works), `GEMMA_MODEL`, `FALLBACK_LLM_PROVIDER=gemma` |
-| Optional Evolus agent as the reviewer | `EVOLUS_API_KEY`, `EVOLUS_APP_ID`, `EVOLUS_AGENT_ID`, `REVIEW_LLM_PROVIDER=evolus` |
-| Show cost in dollars | `AMD_PRICE_INPUT_PER_MTOK_USD`, `AMD_PRICE_OUTPUT_PER_MTOK_USD`, `CF_IMAGE_COST_PER_IMAGE_USD` (cost stays "unknown" until you set prices) |
+| AMD-hosted text model (required) | `AMD_BASE_URL`, `AMD_API_KEY`, `AMD_MODEL` (we ran `DeepSeek-V4-Flash`) |
+| Gemma (translation, fallback) | `GEMMA_MODEL`, and either `GEMMA_OPENAI_BASE_URL` + `GEMMA_OPENAI_API_KEY` (Gemma on the AMD endpoint) or `GEMMA_API_KEY` (Google AI Studio); `FALLBACK_LLM_PROVIDER=gemma` |
+| Images | `CF_ACCOUNT_ID`, `CF_API_TOKEN`; backup `POLLINATIONS_API_KEY` |
+| Evolus review agent | `EVOLUS_API_KEY`, `EVOLUS_APP_ID`, `EVOLUS_AGENT_ID`, `REVIEW_LLM_PROVIDER=evolus` |
+| Evolus Sentiment AI Tool | `EVOLUS_SENTIMENT=true` |
+| Show cost in dollars | `AMD_PRICE_INPUT_PER_MTOK_USD`, `AMD_PRICE_OUTPUT_PER_MTOK_USD`, `CF_IMAGE_COST_PER_IMAGE_USD` (cost shows "unknown" until set; VYRA never guesses) |
+| Protect a public server | `IMAGE_MAX_PER_DAY`, `RATE_LIMIT_PER_MINUTE`, optional `VYRA_API_TOKEN` |
 
-Then in the app: **Settings → Test connection** on each service. A service is labelled "Verified working" only after a real call to a non-local endpoint succeeded.
-
-To collect AMD evidence for judges: `python scripts\amd_evidence.py` (writes `evidence\amd_evidence.json`).
+After starting, open **Settings** and press **Test connection** on each service. A service is labelled "Verified working" only after a real call to a non-local endpoint succeeded.
 
 ## Using the app
-1. **Create Campaign** — 4 short pages: product, audiences, brand rules (facts you can prove, words to avoid, an approved discount, if any), review.
-2. **Generate with AI** — progress is shown; results appear per audience.
-3. Read the **Brand checks**, edit text, play each story, generate hero/scene images, regenerate one audience if needed.
-4. **Ad Preview** shows the hero image with the headline as an ad. **Campaign Stats** shows real usage, tokens, latency and cost.
 
-A campaign is "Ready" only when every audience generated and no blocking issue remains; otherwise it shows "Draft" or "Needs review", with the reason. "Ready" is a recommendation: a human must still approve anything before it is published.
+1. **Create Campaign**: product, audiences, brand rules (facts you can prove, words to avoid, an approved discount if any), review.
+2. **Generate with AI**: progress is shown and results appear per audience.
+3. Read the **Brand checks**, edit text, play each story, generate images, translate, regenerate one audience if needed.
+4. **Ad Preview** shows the hero image as an ad. **Campaign Stats** shows real usage, tokens, latency and cost.
+
+A campaign is "Ready" only when every audience generated and no blocking issue remains; otherwise it shows "Draft" or "Needs review", with the reason.
+
+## Responsible AI
+
+- Deterministic rules catch unsupported claims, numbers not in the brief, unapproved discounts or urgency, personal data and sensitive-attribute targeting.
+- The AI-assisted review (Evolus agent) must quote the exact text for every finding; findings without evidence are dropped. It is probabilistic and labelled as such.
+- Translations carry a "Translated by Gemma" label and a banner if numbers differ from the original.
+- Neither layer is legal advice or a compliance guarantee: a human approves anything that is published.
 
 ## Project layout
+
 ```
-index.html            the app (original look preserved)   public/   favicon, config.js
-backend/app/          API, providers, services, SQLite    backend/tests/   automated tests + fake AI servers
-scripts/              mock_demo.py, amd_evidence.py       tests/e2e/       browser + restart checks
-docs/                 architecture, API, integrations, eligibility, demo script, troubleshooting, limitations, test report
+index.html            the app                      public/          favicon, config.js
+backend/app/          API, providers, services     backend/tests/   automated tests + fake AI servers
+evolus/               knowledge library + setup    scripts/         mock demo, AMD proof tools
+docs/                 architecture, API, demo script, limitations, test report
 ```
 
-## Why Starlette and not FastAPI?
-The build environment could not reach PyPI, so the backend uses the Starlette/Pydantic/httpx packages that were available offline, with a small router that gives typed JSON bodies, a uniform error format and OpenAPI docs. The behaviour is the same for you; `pip install -r backend\requirements.txt` fetches everything normally on your PC.
+## Testing and known limits
 
-## Optional: Vite dev server or Docker
-`npm install` then `npm run dev` (port 5173, proxies to the backend on 8000). `docker compose up --build` after creating `backend/.env`. Neither was run in the build environment.
+- 68 automated backend tests run against local fake AI servers that speak the real wire formats: `cd backend && python -m pytest -q tests`.
+- The live services (AMD, Gemma, Evolus, Cloudflare) were exercised through the app's Settings checks and real campaign runs during the hackathon.
+- Docker and the optional Vite dev server are included but the main tested path is local Python.
+- Single-user prototype: SQLite, in-process background jobs, no accounts. Evolus workflows, the chat widget, video and social publishing are not implemented. See `docs/LIMITATIONS.md`.
 
-## Safety defaults
-Keys are read server-side only and redacted from logs. Request size, rate limits and image size are capped. Uploaded/generated images are checked by file signature and served only by random names. Set `VYRA_API_TOKEN` if the server is reachable by anyone else. Do not expose it publicly without that.
+## License
 
-More: `docs/TROUBLESHOOTING.md`, `docs/DEMO_SCRIPT.md`.
-
-## Added for the submission: Evolus building blocks and AMD proof
-- **Evolus building blocks** (knowledge library + Sentiment AI Tool, on top of the review agent): see `evolus/README.md`. The Sentiment tool is off by default; enable it with `EVOLUS_SENTIMENT=true` in `backend/.env`.
-- **AMD proof**: Settings has an *AMD proof for judges* card; `python scripts/amd_proof_pack.py` writes `evidence/amd_proof.md`; the five proof items and exactly what to claim are in `docs/AMD_PROOF.md`.
-- Both additions are optional and change nothing about generation, images, review or costs when switched off. Not run against the real Evolus or AMD services: use *Test connection* in Settings first.
+MIT, see `LICENSE`.
