@@ -1,0 +1,8 @@
+services:
+  vyra:
+    build: .
+    ports: ["8000:8000"]
+    env_file: backend/.env      # copy backend/.env.example to backend/.env first
+    volumes: ["vyra-data:/data"]
+volumes:
+  vyra-data:

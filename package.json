@@ -1,0 +1,15 @@
+{
+  "name": "vyra",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "VYRA frontend (single-page app). The backend in ./backend also serves it, so npm is optional.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^7.0.0"
+  }
+}
